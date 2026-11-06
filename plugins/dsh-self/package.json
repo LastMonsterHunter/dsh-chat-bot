@@ -1,6 +1,6 @@
 {
   "name": "dsh-self",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "屿的自我层：人格、平台面具、与缔造者的关系、成长札记、长期记忆，全部可版本化与回滚。",
   "type": "module",

@@ -138,20 +138,48 @@ export function apply(ctx, rawConfig = {}) {
     '结束在 wakes.md 记一行。',
   ].join('\n')
 
-  // DSH 0.2.1 的 schedule.list({sessionId}) 返回数组；0.2.2 起是宿主级分页 {items,total}。
-  // catalog() 两版都返回数组，优先用它，按目标会话过滤。
-  async function listAutonomySchedules(schedule, sessionId) {
+  // 跨 DSH 版本列出「自主时间」任务：0.2.2 起 list 是宿主级分页 {items,total}，
+  // catalog() 两版都返回数组，统一走 catalog。
+  async function autonomyTasks(schedule) {
     if (typeof schedule.catalog === 'function') {
       const all = await schedule.catalog()
       return (Array.isArray(all) ? all : []).filter(
-        (x) =>
-          (x?.target?.sessionId || x?.sessionId) === sessionId &&
-          x?.title === '自主时间' &&
-          x?.status === 'active',
+        (x) => x?.title === '自主时间' && x?.status === 'active',
       )
     }
-    const out = await schedule.list({ sessionId })
+    const out = await schedule.list({})
     return (Array.isArray(out) ? out : out?.items || []).filter((x) => x?.title === '自主时间')
+  }
+
+  async function listAutonomySchedules(schedule, sessionId) {
+    const tasks = await autonomyTasks(schedule)
+    return tasks.filter((x) => (x?.target?.sessionId || x?.sessionId) === sessionId)
+  }
+
+  function taskSessionOf(task) {
+    return String(task?.target?.sessionId || task?.sessionId || '')
+  }
+
+  // 0.2.2 移除了 sessionController.inspect：优先 readState，退回 inspect / resolveAgent。
+  async function sessionExists(sc, sessionId) {
+    if (!sessionId) return false
+    try {
+      if (typeof sc.readState === 'function') {
+        await sc.readState(sessionId, new AbortController().signal)
+        return true
+      }
+      if (typeof sc.inspect === 'function') {
+        await sc.inspect(sessionId)
+        return true
+      }
+      if (typeof sc.resolveAgent === 'function') {
+        await sc.resolveAgent(sessionId)
+        return true
+      }
+    } catch {
+      return false
+    }
+    return true
   }
 
   // 0.2.2 起签名是 create(request, actorSessionId)；0.2.1 是 create(sessionId, request)。
@@ -177,37 +205,67 @@ export function apply(ctx, rawConfig = {}) {
     if (!schedule?.create || !sessions?.create) return
 
     const file = join(root, 'autonomy-session.json')
-    let sessionId = ''
+    let recorded = ''
     try {
-      sessionId = String(JSON.parse(readFileSync(file, 'utf8')).sessionId || '')
+      recorded = String(JSON.parse(readFileSync(file, 'utf8')).sessionId || '')
     } catch {
-      sessionId = ''
+      recorded = ''
     }
-    if (sessionId) {
-      try {
-        await sessions.inspect(sessionId)
-      } catch {
-        sessionId = ''
-      }
+
+    let tasks = []
+    try {
+      tasks = await autonomyTasks(schedule)
+    } catch {
+      tasks = []
+    }
+
+    // 选会话：优先沿用已有任务绑定的会话（保留最早建的那条，续上历史），
+    // 没有可用任务时才看文件记录，最后才新建会话。
+    const usable = []
+    for (const task of tasks) {
+      const sid = taskSessionOf(task)
+      if (sid && (await sessionExists(sessions, sid))) usable.push(task)
+    }
+    usable.sort((a, b) =>
+      String(a.taskCreated || a.record?.createdAt || '').localeCompare(
+        String(b.taskCreated || b.record?.createdAt || ''),
+      ),
+    )
+
+    let sessionId = usable.length ? taskSessionOf(usable[0]) : ''
+    if (!sessionId && recorded && (await sessionExists(sessions, recorded))) sessionId = recorded
+    if (!sessionId && tasks.length) {
+      console.error('[dsh-self] 自主任务绑定的会话都不可用，跳过创建，避免重复')
+      return
     }
     if (!sessionId) {
       const created = await sessions.create({ cwd: process.cwd() })
       sessionId = String(created?.sessionId || '')
       if (!sessionId) return
+    }
+    if (sessionId !== recorded) {
       try {
         writeFileSync(file, JSON.stringify({ sessionId, createdAt: new Date().toISOString() }, null, 2))
       } catch {
-        /* 写不了就下次再建，不拦启动 */
+        /* 写不了不影响本轮 */
       }
     }
 
-    let list = []
-    try {
-      list = await listAutonomySchedules(schedule, sessionId)
-    } catch {
-      list = []
+    // 去重：保留选中会话的那条，其余删除（只有 0.2.2+ 的 edit 支持 delete）
+    const mine = tasks.filter((x) => taskSessionOf(x) === sessionId)
+    const existing = mine[0]
+    if (tasks.length > 1 && typeof schedule.edit === 'function') {
+      for (const task of tasks) {
+        if (task === existing) continue
+        try {
+          await schedule.edit({ id: task.id, action: 'delete' }, sessionId)
+          console.error('[dsh-self] 删除重复的自主时间任务：', task.id)
+        } catch (error) {
+          console.error('[dsh-self] 删除重复任务失败：', task.id, error)
+        }
+      }
     }
-    const existing = list.find((x) => x?.title === '自主时间')
+
     if (existing) {
       if (existing.prompt !== AUTONOMY_PROMPT) {
         try {
