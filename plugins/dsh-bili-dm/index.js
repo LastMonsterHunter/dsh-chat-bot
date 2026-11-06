@@ -30,8 +30,9 @@ const DEFAULTS = {
 }
 
 const execFileAsync = promisify(execFile)
-// 直接用包内路径，不走模块解析：插件加载器不认外部 npm import
-const FFMPEG = fileURLToPath(new URL('./bin/ffmpeg', import.meta.url))
+// 优先用包内二进制；没有就用环境变量或 PATH 里的 ffmpeg（仓库不提交 43MB 二进制）
+const BUNDLED_FFMPEG = fileURLToPath(new URL('./bin/ffmpeg', import.meta.url))
+const FFMPEG = process.env.BILI_DM_FFMPEG || (existsSync(BUNDLED_FFMPEG) ? BUNDLED_FFMPEG : 'ffmpeg')
 const UA =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36'
 const REFERER = 'https://message.bilibili.com/'
