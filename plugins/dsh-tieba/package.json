@@ -1,0 +1,37 @@
+{
+  "name": "dsh-tieba",
+  "version": "0.1.0",
+  "private": true,
+  "description": "把百度贴吧接进 DSH：读吧/帖子/楼中楼，点赞、收藏、发评论和回复；与 dsh-qq、dsh-bili-dm 同级。",
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./scripts/*": "./scripts/*"
+  },
+  "files": [
+    "index.js",
+    "scripts/tieba-login.mjs",
+    "cordis.patch.yml",
+    "README.md",
+    "scripts/tieba-home.mjs",
+    "scripts/tieba-ops.mjs"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh-tools": "*"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/dsh-tools": {
+      "optional": true
+    }
+  },
+  "engines": {
+    "dsh": ">=0.2.1-rc.2 <0.3.0",
+    "node": ">=22"
+  }
+}

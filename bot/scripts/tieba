@@ -1,0 +1,126 @@
+#!/usr/bin/env bash
+# tieba — 百度贴吧适配层入口（gateway + 登录 + 浏览）
+# 用法: scripts/tieba [up|down|restart|status|logs|doctor|login|browse]
+set -uo pipefail
+umask 077
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+VENV="${TIEBA_VENV:-$ROOT/envs/bilibili}"
+DATA="$ROOT/data/tieba"
+LOG="$DATA/logs/gateway.log"
+PIDFILE="$DATA/gateway.pid"
+PORT="${TIEBA_PORT:-6282}"
+# aiohttp 用系统 CA，这台机器的 python 找不到根证书；统一指到 venv 里的 certifi。
+if [ -z "${SSL_CERT_FILE:-}" ]; then
+  _cert="$(ls "$ROOT"/envs/*/lib/python*/site-packages/certifi/cacert.pem 2>/dev/null | head -1)"
+  [ -n "$_cert" ] && export SSL_CERT_FILE="$_cert"
+fi
+LOGIN_SCRIPT="${TIEBA_LOGIN_SCRIPT:-$ROOT/../plugins/dsh-tieba/scripts/tieba-login.mjs}"
+export PYTHONPATH="$ROOT"
+
+mkdir -p "$DATA/logs"
+chmod 700 "$DATA" "$DATA/logs" 2>/dev/null || true
+
+port_open() { lsof -tiTCP:"$1" -sTCP:LISTEN >/dev/null 2>&1; }
+pid_from_port() { lsof -tiTCP:"$PORT" -sTCP:LISTEN 2>/dev/null | head -1; }
+ok()   { printf '\033[32m✓\033[0m %s\n' "$*"; }
+bad()  { printf '\033[31m✗\033[0m %s\n' "$*"; }
+info() { printf '\033[36m•\033[0m %s\n' "$*"; }
+
+token() { cat "$ROOT/data/secrets/tieba_token" 2>/dev/null || true; }
+auth() { printf 'Authorization: Bearer %s' "$(token)"; }
+
+wait_gateway() {
+  for _ in $(seq 1 40); do
+    if curl -fsS -m 1 "http://127.0.0.1:${PORT}/health" >/dev/null 2>&1; then return 0; fi
+    sleep 0.5
+  done
+  return 1
+}
+
+cmd_up() {
+  if port_open "$PORT"; then info "gateway 已在 :${PORT} 运行"; return 0; fi
+  info "启动贴吧 gateway"
+  ( cd "$ROOT" && nohup "$VENV/bin/python" -m platforms.tieba.gateway.server </dev/null >>"$LOG" 2>&1 & )
+  if wait_gateway; then
+    pid_from_port >"$PIDFILE" 2>/dev/null || true
+    ok "gateway 已就绪: http://127.0.0.1:${PORT}"
+  else
+    bad "gateway 未就绪，检查 $LOG"
+    return 1
+  fi
+}
+
+cmd_down() {
+  local pid
+  pid="$(pid_from_port)"
+  [ -n "$pid" ] && kill -TERM "$pid" 2>/dev/null || true
+  rm -f "$PIDFILE"
+  sleep 1
+  ok "贴吧 gateway 已停止"
+}
+
+cmd_status() {
+  if port_open "$PORT"; then
+    ok "gateway :${PORT} 运行中"
+    curl -fsS -m 2 -H "$(auth)" "http://127.0.0.1:${PORT}/status" 2>/dev/null || true
+    echo
+  else
+    bad "gateway :${PORT} 未运行"
+  fi
+  if [ -f "$ROOT/data/secrets/tieba_credential.json" ]; then
+    ok "凭据存在（$(stat -f '%Sp' "$ROOT/data/secrets/tieba_credential.json" 2>/dev/null)）"
+  else
+    info "未登录：scripts/tieba login"
+  fi
+}
+
+cmd_logs() {
+  tail -n 100 -f "$LOG"
+}
+
+cmd_login() {
+  if [ ! -f "$LOGIN_SCRIPT" ]; then
+    bad "找不到登录脚本：$LOGIN_SCRIPT"
+    return 1
+  fi
+  node "$LOGIN_SCRIPT" --out "$ROOT/data/secrets/tieba_credential.json" --qr /tmp/tieba-login/qr.png
+}
+
+cmd_browse() {
+  local forums="${1:-}" count="${2:-6}"
+  local q="?count=${count}"
+  [ -n "$forums" ] && q="?forums=$(python3 -c 'import sys,urllib.parse;print(urllib.parse.quote(sys.argv[1]))' "$forums")&count=${count}"
+  curl -fsS -m 20 -H "$(auth)" "http://127.0.0.1:${PORT}/feed${q}" | "$VENV/bin/python" -m json.tool
+}
+
+cmd_doctor() {
+  "$VENV/bin/python" - <<'PY'
+import asyncio
+from platforms.tieba.client import TiebaClient
+
+async def main():
+    c = TiebaClient()
+    s = await c.login_status()
+    print(("✓" if s.get("logged_in") else "✗") + " 贴吧登录：" + s.get("detail", ""))
+    try:
+        page = await c.forum_page("摸鱼")
+        print(f"✓ 读接口：摸鱼吧 {len(page['threads'])} 帖")
+    except Exception as e:
+        print(f"✗ 读接口：{e}")
+
+asyncio.run(main())
+PY
+}
+
+case "${1:-status}" in
+  up) cmd_up ;;
+  down) cmd_down ;;
+  restart) cmd_down && exec "$0" up ;;
+  status) cmd_status ;;
+  logs) cmd_logs ;;
+  login) cmd_login ;;
+  browse) shift; cmd_browse "$@" ;;
+  doctor) cmd_doctor ;;
+  *) echo "用法: $0 [up|down|restart|status|logs|doctor|login|browse]"; exit 1 ;;
+esac

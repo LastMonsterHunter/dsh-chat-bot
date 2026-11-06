@@ -1,0 +1,12 @@
+# dsh-qq：机器人 QQ 账号的 OneBot 11 桥。
+# 连接信息默认从 $DSH_HOME/secrets/qq-bridge.json 读（600），也可以在这里覆盖。
+- insert:
+    - id: dsh-qq
+      name: dsh-qq
+      config:
+        bridgeFile: ""
+        wsUrl: ""
+        token: ""
+        ownerUid: ""
+        allowGroups: []
+        maxBuffer: 500

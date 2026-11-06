@@ -1,0 +1,10 @@
+# B站私信桥：只轮询缔造者的会话，回复交给 DSH 的屿。
+- insert:
+    - id: dsh-bili-dm
+      name: dsh-bili-dm
+      config:
+        credentialPath: ""
+        ownerUid: ""
+        pollSeconds: 15
+        autoReply: true
+        bridgeUrl: ""

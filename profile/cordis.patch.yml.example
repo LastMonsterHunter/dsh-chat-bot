@@ -1,0 +1,24 @@
+# 可选配置片段：复制需要的条目到
+#   ~/.dsh/profiles/desktop/cordis.patch.yml
+# 然后重启 DSH。
+
+# QQ 群白名单：只有这些群能触发发送/自动回复。填自己的群号。
+- id: dsh-qq
+  name: dsh-qq
+  config:
+    allowGroups: []
+    autoReplyGroups: []
+
+# B 站私信：ownerUid 是允许私信对话的账号（私信桥只碰这一条会话）。
+- id: dsh-bili-dm
+  name: dsh-bili-dm
+  config:
+    ownerUid: ""
+    pollSeconds: 15
+    autoReply: true
+
+# 贴吧每日发言上限（风控优先）。
+- id: dsh-tieba
+  name: dsh-tieba
+  config:
+    dailyCommentLimit: 20

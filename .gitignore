@@ -1,0 +1,20 @@
+node_modules/
+.DS_Store
+*.log
+*.tgz
+dist/
+
+# bot 运行态：凭据、venv、缓存都不进版本库
+bot/data/
+bot/envs/
+
+# 不纳入本仓库的目录
+plugins/dsh-persona-forge/
+plugins/dsh-purge/
+/persona-kit/
+/.backup/
+/scripts/
+/templates/
+
+# 平台二进制：各插件 bin/ 下的 ffmpeg 等不进版本库
+plugins/*/bin/

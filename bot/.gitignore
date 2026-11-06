@@ -1,0 +1,33 @@
+.DS_Store
+__pycache__/
+*.py[cod]
+*.log
+
+# 运行态数据（聊天记录、缓存、日志、备份、密钥）
+data/
+envs/
+vendor/
+
+# 本地临时
+tmp/
+secrets/
+
+# 本地备份与工具软链（指向 envs/，提交会变成悬空链接）
+.backup/
+.pytest_cache/
+tools/bin/ffmpeg
+*.bak-*
+
+# 已停用 / 不在当前流程：文件保留在本地，不进版本库
+docs/
+platforms/qq/
+platforms/bilibili/
+scripts/bot
+scripts/qq
+scripts/prune-logs
+scripts/install-agents
+scripts/uninstall-agents
+scripts/bili-runtime-launchd.sh
+scripts/napcat-autologin.py
+scripts/legacy/
+tools/

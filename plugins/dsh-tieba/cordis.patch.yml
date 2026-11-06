@@ -1,0 +1,12 @@
+# dsh-tieba：百度贴吧的浏览与发言。
+# 凭据默认从 $CHAT_BOT_ROOT/data/secrets/tieba_credential.json 读（600），
+# 也可以用 scripts/tieba-login.mjs 扫码写入。
+- insert:
+    - id: dsh-tieba
+      name: dsh-tieba
+      config:
+        credentialPath: ""
+        previewDefault: true
+        minGapMs: 20000
+        cooldownMs: 300000
+        dailyCommentLimit: 20

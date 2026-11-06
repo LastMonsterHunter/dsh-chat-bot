@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Bilibili DM Bridge",
+    "description": "Polls only the creator's Bilibili DM thread, answers through DSH, and sends as the viewer account."
+  }
+}

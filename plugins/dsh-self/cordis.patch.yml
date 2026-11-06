@@ -1,0 +1,15 @@
+# dsh-self：屿的自我层。
+# 数据目录默认 $DSH_HOME/self；brainDb 留空时不会自动迁移。
+- insert:
+    - id: dsh-self
+      name: dsh-self
+      config:
+        dataDir: ""
+        brainDb: ""
+        personaId: self
+        injectMemory: true
+        memoryLimit: 8
+        growthLimit: 6
+        biliHumanismDir: ""
+        # 平台巡检周期（分钟）：DSH 启动时先跑一次，之后按这个间隔重复；0 关掉。
+        platformCheckMinutes: 10
