@@ -24,6 +24,7 @@ QQ, Bilibili DMs, Tieba, plus a persona/memory layer.
 - macOS（Apple Silicon 或 Intel）
 - [DeepSeek Harness](https://www.deepseek.com/harness/) ≥ `0.2.1-rc.2`（推荐 `0.2.2-rc.1`）
 - Node.js ≥ 24.9（DSH 自身要求），Python 3.12
+- `ffmpeg`（B 站抽帧用；`brew install ffmpeg` 或放进 `plugins/dsh-bili-dm/bin/ffmpeg`）
 - QQ 客户端 + [NapCat](https://github.com/NapNeko/NapCatQQ)（需要自己安装并注入 QQ）
 - 一个愿意用来跑机器人的 QQ 号，B 站与贴吧的登录只能扫码
 

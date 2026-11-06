@@ -6,6 +6,8 @@
 - 已安装 [DeepSeek Harness](https://www.deepseek.com/harness/) 并至少启动过一次
   （需要 `~/.dsh/profiles/desktop` 已生成）
 - Node.js ≥ 24.9、Python 3.12
+- `ffmpeg`（B 站抽帧用）：`brew install ffmpeg`，或把二进制放到
+  `plugins/dsh-bili-dm/bin/ffmpeg`，或用 `BILI_DM_FFMPEG` 指定路径
 - 用于机器人的 QQ 号，以及它对应的 QQ 客户端
 
 ## 1. 跑安装脚本
